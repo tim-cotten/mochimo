@@ -7,6 +7,23 @@
  * \copyright Copyright (c) 2019 by Adequate Systems, LLC.  All Rights Reserved.
  */
 
+#include "../config.h"
+#include "../mochimo.h"
+#define closesocket(_sd) close(_sd)
+
+#define EXCLUDE_NODES
+
+byte Errorlog = 1;  /* since not including data.c */
+byte Bgflag;
+byte Monitor;
+byte Running = 1;
+word32 Trace = 1;
+word32 Nsolved;
+pid_t Mpid, Sendfound_pid;  /* in error.c */
+
+#include "../error.c"
+#include "../algo/peach/peach.c";
+
 #define MYSQL_CONF_NUM 4
 #define MYSQL_CONF_HOSTNAME 0
 #define MYSQL_CONF_DATABASE 1
@@ -40,7 +57,7 @@ int cstring_cmp(const void *a, const void *b)
 int get_mysql_conf(char *conf[])
 {
   // Exit if the config file isn't found
-  FILE *fp = fopen("../../config/db.conf", "r");
+  FILE *fp = fopen("../../src/bx-mysql/config/db.conf", "r");
   if (!fp) {
     return FALSE;
   }
@@ -530,14 +547,12 @@ word32 db_export_block(BHEADER *bh, BTRAILER *bt, MYSQL *conn)
   word32  difficulty = (word32)bt->difficulty[0];
   word32  solve_time = get32(bt->stime);
   word32  next_time  = get32(bt->time0);
-  char    *haiku     = trigg_check(bt->mroot, bt->difficulty[0], bt->bnum);
+  char    haiku[256];
+  
+  trigg_expand2(bt->nonce, haiku);
 
   if (neogenesis) {
     tx_count = (header_len - sizeof(BHEADER)) / sizeof(LENTRY); // # ledger entries
-  }
-
-  if (haiku == NULL) {
-    haiku = "";
   }
 
   if (check_block_exists(bt, conn)) {
